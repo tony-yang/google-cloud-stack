@@ -12,13 +12,16 @@ import (
 )
 
 func listHandler(w http.ResponseWriter, r *http.Request) {
-	books, _ := bookshelf.DB.ListBooks()
-
-	bookResults := ""
-	for _, book := range books {
-		bookResults = bookResults + strconv.FormatInt(book.ID, 10) + ": " + book.Title + " by " + book.Author
+	books, err := bookshelf.DB.ListBooks()
+	if err != nil {
+		fmt.Fprintf(w, err.Error())
+	} else {
+		bookResult := ""
+		for _, book := range books {
+			bookResult = bookResult + "\n" + book.String()
+		}
+		fmt.Fprintf(w, string(bookResult))
 	}
-	fmt.Fprintf(w, bookResults)
 }
 
 func detailHandler(w http.ResponseWriter, r *http.Request) {

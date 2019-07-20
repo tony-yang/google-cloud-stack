@@ -27,12 +27,6 @@ var createTableStatements = []string{
 // mysqlDB persists books to a MySQL instance.
 type mysqlDB struct {
 	conn *sql.DB
-
-	list   *sql.Stmt
-	insert *sql.Stmt
-	get    *sql.Stmt
-	update *sql.Stmt
-	delete *sql.Stmt
 }
 
 // Ensure mysqlDB conforms to the BookDatabase interface.
@@ -53,35 +47,13 @@ func execSQL(stmt *sql.Stmt, args ...interface{}) (sql.Result, error) {
 	return r, nil
 }
 
-// ListBooks lists all books, ordered by title.
-func (m *mysqlDB) ListBooks() ([]*Book, error) {
-	fmt.Println("DB ListBook")
-	books := []*Book{
-		{
-			ID:     1,
-			Title:  "book1",
-			Author: "author1",
-		},
-		{
-			ID:     2,
-			Title:  "book2",
-			Author: "author2",
-		},
-	}
-	return books, nil
+//rowScanner is implemented by sql.Row and sql.Rows
+type rowScanner interface {
+	Scan(dest ...interface{}) error
 }
 
-const getStatement = `SELECT * FROM books WHERE id = ?`
-
-// GetBook retrieves a book by its ID.
-func (m *mysqlDB) GetBook(bookid int64) (*Book, error) {
-	fmt.Println("DB GetBook")
-	get, err := m.conn.Prepare(getStatement)
-	if err != nil {
-		return nil, fmt.Errorf("mysql: prepare get: %v", err)
-	}
-
-	row := get.QueryRow(bookid)
+// scanBook reads a book from a sql.Row or sql.Rows, and creates a book
+func scanBook(row rowScanner) (*Book, error) {
 	var (
 		id            int64
 		title         sql.NullString
@@ -100,6 +72,52 @@ func (m *mysqlDB) GetBook(bookid int64) (*Book, error) {
 		ID:     id,
 		Title:  title.String,
 		Author: author.String,
+	}
+	return book, nil
+}
+
+const listStatement = `SELECT * FROM books ORDER BY title`
+
+// ListBooks lists all books, ordered by title.
+func (m *mysqlDB) ListBooks() ([]*Book, error) {
+	fmt.Println("DB ListBook")
+	list, err := m.conn.Prepare(listStatement)
+	if err != nil {
+		return nil, fmt.Errorf("mysql: prepare list: %v", err)
+	}
+	rows, err := list.Query()
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var books []*Book
+	for rows.Next() {
+		book, err := scanBook(rows)
+		if err != nil {
+			return nil, fmt.Errorf("mysql: could not read row: %v", err)
+		}
+		books = append(books, book)
+	}
+	return books, nil
+}
+
+const getStatement = `SELECT * FROM books WHERE id = ?`
+
+// GetBook retrieves a book by its ID.
+func (m *mysqlDB) GetBook(id int64) (*Book, error) {
+	fmt.Println("DB GetBook")
+	get, err := m.conn.Prepare(getStatement)
+	if err != nil {
+		return nil, fmt.Errorf("mysql: prepare get: %v", err)
+	}
+
+	row := get.QueryRow(id)
+	book, err := scanBook(row)
+	if err == sql.ErrNoRows {
+		return nil, fmt.Errorf("mysql: could not find book with id %d", id)
+	} else if err != nil {
+		return nil, fmt.Errorf("mysql: could not get book: %v", err)
 	}
 	return book, nil
 }
