@@ -1,9 +1,9 @@
 package bookshelf
 
 import (
-	"fmt"
 	"database/sql"
 	"database/sql/driver"
+	"fmt"
 
 	"github.com/go-sql-driver/mysql"
 )
@@ -28,49 +28,102 @@ var createTableStatements = []string{
 type mysqlDB struct {
 	conn *sql.DB
 
-	list *sql.Stmt
+	list   *sql.Stmt
 	insert *sql.Stmt
-	get *sql.Stmt
+	get    *sql.Stmt
 	update *sql.Stmt
 	delete *sql.Stmt
 }
 
 // Ensure mysqlDB conforms to the BookDatabase interface.
-var _ BookDatabase  = &mysqlDB{}
+var _ BookDatabase = &mysqlDB{}
+
+// execSQL executes a given statement, expecting one row to be affected.
+func execSQL(stmt *sql.Stmt, args ...interface{}) (sql.Result, error) {
+	r, err := stmt.Exec(args...)
+	if err != nil {
+		return r, fmt.Errorf("mysql: could not execute statement: %v", err)
+	}
+	rowsAffected, err := r.RowsAffected()
+	if err != nil {
+		return r, fmt.Errorf("mysql: could not get rows affected: %v", err)
+	} else if rowsAffected != 1 {
+		return r, fmt.Errorf("mysql: expected 1 row affected, got %d", rowsAffected)
+	}
+	return r, nil
+}
 
 // ListBooks lists all books, ordered by title.
 func (m *mysqlDB) ListBooks() ([]*Book, error) {
 	fmt.Println("DB ListBook")
 	books := []*Book{
-		&Book{
-			ID: 1,
-			Title: "book1",
+		{
+			ID:     1,
+			Title:  "book1",
 			Author: "author1",
 		},
-		&Book{
-			ID: 2,
-			Title: "book2",
+		{
+			ID:     2,
+			Title:  "book2",
 			Author: "author2",
 		},
 	}
 	return books, nil
 }
 
+const getStatement = `SELECT * FROM books WHERE id = ?`
+
 // GetBook retrieves a book by its ID.
-func (m *mysqlDB) GetBook(id int64) (*Book, error) {
+func (m *mysqlDB) GetBook(bookid int64) (*Book, error) {
 	fmt.Println("DB GetBook")
+	get, err := m.conn.Prepare(getStatement)
+	if err != nil {
+		return nil, fmt.Errorf("mysql: prepare get: %v", err)
+	}
+
+	row := get.QueryRow(bookid)
+	var (
+		id            int64
+		title         sql.NullString
+		author        sql.NullString
+		publishedDate sql.NullString
+		imageUrl      sql.NullString
+		description   sql.NullString
+		createdBy     sql.NullString
+		createdById   sql.NullString
+	)
+	if err := row.Scan(&id, &title, &author, &publishedDate, &imageUrl, &description, &createdBy, &createdById); err != nil {
+		return nil, err
+	}
+
 	book := &Book{
-		ID: 1,
-		Title: "book1",
-		Author: "author1",
+		ID:     id,
+		Title:  title.String,
+		Author: author.String,
 	}
 	return book, nil
 }
 
+const insertStatement = `
+INSERT INTO books (title, author) VALUES (?, ?)`
+
 // AddBook saves a given book, assigning it a new ID
 func (m *mysqlDB) AddBook(b *Book) (id int64, err error) {
 	fmt.Println("DB AddBook")
-	return 1, nil
+	insert, err := m.conn.Prepare(insertStatement)
+	if err != nil {
+		return -1, fmt.Errorf("mysql: prepare insert: %v", err)
+	}
+	r, err := execSQL(insert, b.Title, b.Author)
+	if err != nil {
+		return -1, err
+	}
+
+	lastInsertID, err := r.LastInsertId()
+	if err != nil {
+		return -1, fmt.Errorf("mysql: could not get last insert ID: %v", err)
+	}
+	return lastInsertID, nil
 }
 
 // DeleteBook removes a given book by its ID
@@ -145,9 +198,9 @@ func (c MySQLConfig) ensureTableExists() error {
 	defer conn.Close()
 
 	// Check the connection.
-	if conn.Ping() == driver.ErrBadConn{
+	if conn.Ping() == driver.ErrBadConn {
 		return fmt.Errorf("mysql: could not connect to the database. " +
-				"could be bad address, or this address is not whitelisted for access.")
+			"could be bad address, or this address is not whitelisted for access.")
 	}
 
 	if _, err := conn.Exec("USE library"); err != nil {

@@ -30,7 +30,7 @@ func configureCloudSQL(c cloudSQLConfig) (BookDatabase, error) {
 	return newMySQLDB(MySQLConfig{
 		Username: c.Username,
 		Password: c.Password,
-		Host: "localhost",
-		Port: 3306,
+		Host:     "localhost",
+		Port:     3306,
 	})
 }
