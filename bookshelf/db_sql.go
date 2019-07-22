@@ -3,6 +3,7 @@ package bookshelf
 import (
 	"database/sql"
 	"database/sql/driver"
+	"errors"
 	"fmt"
 
 	"github.com/go-sql-driver/mysql"
@@ -144,10 +145,20 @@ func (m *mysqlDB) AddBook(b *Book) (id int64, err error) {
 	return lastInsertID, nil
 }
 
+const deleteStatement = `DELETE FROM books WHERE id = ?`
+
 // DeleteBook removes a given book by its ID
 func (m *mysqlDB) DeleteBook(id int64) error {
 	fmt.Println("DB DeleteBook")
-	return nil
+	if id == 0 {
+		return errors.New("mysql: book with unassigned ID passed into deleteBook")
+	}
+	delete, err := m.conn.Prepare(deleteStatement)
+	if err != nil {
+		return fmt.Errorf("mysql: prepare delete: %v", err)
+	}
+	_, err = execSQL(delete, id)
+	return err
 }
 
 // UpdateBook updates the entry for a given book

@@ -11,6 +11,7 @@ import (
 	"github.com/tony-yang/google-cloud-stack/bookshelf"
 )
 
+// listHandler displays a list with summaries of books in the database.
 func listHandler(w http.ResponseWriter, r *http.Request) {
 	books, err := bookshelf.DB.ListBooks()
 	if err != nil {
@@ -18,12 +19,15 @@ func listHandler(w http.ResponseWriter, r *http.Request) {
 	} else {
 		bookResult := ""
 		for _, book := range books {
-			bookResult = bookResult + "\n" + book.String()
+			deleteForm := fmt.Sprintf("<form method='post' action='/books/%d/delete'><input type='submit' value='Delete'></form>", book.ID)
+			bookResult = bookResult + "<br>" + book.String() + deleteForm
 		}
+		w.Header().Set("Content-Type", "text/html; charset=utf-8")
 		fmt.Fprintf(w, string(bookResult))
 	}
 }
 
+// detailHandler displays the details of a given book.
 func detailHandler(w http.ResponseWriter, r *http.Request) {
 	id, err := strconv.ParseInt(mux.Vars(r)["id"], 10, 64)
 	if err != nil {
@@ -55,6 +59,7 @@ func addBookHandler(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprintf(w, FORM)
 }
 
+// createHandler adds a book to the database
 func createHandler(w http.ResponseWriter, r *http.Request) {
 	book := &bookshelf.Book{
 		Title:  r.FormValue("title"),
@@ -67,6 +72,17 @@ func createHandler(w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, fmt.Sprintf("/books/%d", id), http.StatusFound)
 }
 
+// deletHandler deletes a given book
+func deleteHandler(w http.ResponseWriter, r *http.Request) {
+	id, err := strconv.ParseInt(mux.Vars(r)["id"], 10, 64)
+	if err != nil {
+		fmt.Println("delete handler parse id error: %v", err)
+		http.Redirect(w, r, fmt.Sprintf("/books"), http.StatusFound)
+	}
+	bookshelf.DB.DeleteBook(id)
+	http.Redirect(w, r, fmt.Sprintf("/books"), http.StatusFound)
+}
+
 func registerHandlers() {
 	fmt.Println("Register handlers")
 	r := mux.NewRouter()
@@ -76,6 +92,7 @@ func registerHandlers() {
 	r.HandleFunc("/books/add", addBookHandler).Methods("GET")
 
 	r.HandleFunc("/books", createHandler).Methods("POST")
+	r.HandleFunc("/books/{id:[0-9]+}/delete", deleteHandler).Methods("POST")
 
 	http.Handle("/", r)
 }
