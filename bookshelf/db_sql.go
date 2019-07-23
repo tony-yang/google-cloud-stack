@@ -161,15 +161,23 @@ func (m *mysqlDB) DeleteBook(id int64) error {
 	return err
 }
 
+const updateStatement = `UPDATE books SET title=?, author=? WHERE id=?`
+
 // UpdateBook updates the entry for a given book
 func (m *mysqlDB) UpdateBook(b *Book) error {
 	fmt.Println("DB UpdateBook")
-	return nil
+	update, err := m.conn.Prepare(updateStatement)
+	if err != nil {
+		return fmt.Errorf("mysql: prepare update: %v", err)
+	}
+	_, err = execSQL(update, b.Title, b.Author, b.ID)
+	return err
 }
 
 // Close closes the database, freeing up resources
 func (m *mysqlDB) Close() {
 	fmt.Println("DB close")
+	m.conn.Close()
 }
 
 type MySQLConfig struct {
