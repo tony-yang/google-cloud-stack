@@ -22,7 +22,7 @@ func init() {
 	})
 
 	if err != nil {
-		log.Fatal("cannot configure cloud SQL %v", err)
+		log.Fatalf("cannot configure cloud SQL %v", err)
 	}
 }
 

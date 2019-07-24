@@ -25,6 +25,4 @@ WORKDIR /go/src
 
 ADD . /go/src/github.com/tony-yang/google-cloud-stack
 
-ENV GO111MODULE=on
-
 EXPOSE 80
