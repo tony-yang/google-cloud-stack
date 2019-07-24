@@ -2,6 +2,7 @@ package bookshelf
 
 import (
 	"log"
+	"os"
 )
 
 var (
@@ -17,7 +18,7 @@ func init() {
 	DB, err = configureCloudSQL(cloudSQLConfig{
 		Username: "root",
 		Password: "12345",
-		Instance: "gcslearn:us-west1:library",
+		Instance: "ttyang-gcs:us-west1:library",
 	})
 
 	if err != nil {
@@ -26,6 +27,15 @@ func init() {
 }
 
 func configureCloudSQL(c cloudSQLConfig) (BookDatabase, error) {
+	if os.Getenv("GAE_INSTANCE") != "" {
+
+		// Running in prod
+		return newMySQLDB(MySQLConfig{
+			Username:   c.Username,
+			Password:   c.Password,
+			UnixSocket: "/cloudsql/" + c.Instance,
+		})
+	}
 	// Running locally
 	return newMySQLDB(MySQLConfig{
 		Username: c.Username,
