@@ -70,9 +70,10 @@ func scanBook(row rowScanner) (*Book, error) {
 	}
 
 	book := &Book{
-		ID:     id,
-		Title:  title.String,
-		Author: author.String,
+		ID:       id,
+		Title:    title.String,
+		Author:   author.String,
+		ImageURL: imageUrl.String,
 	}
 	return book, nil
 }
@@ -124,7 +125,7 @@ func (m *mysqlDB) GetBook(id int64) (*Book, error) {
 }
 
 const insertStatement = `
-INSERT INTO books (title, author) VALUES (?, ?)`
+INSERT INTO books (title, author, imageUrl) VALUES (?, ?, ?)`
 
 // AddBook saves a given book, assigning it a new ID
 func (m *mysqlDB) AddBook(b *Book) (id int64, err error) {
@@ -133,7 +134,7 @@ func (m *mysqlDB) AddBook(b *Book) (id int64, err error) {
 	if err != nil {
 		return -1, fmt.Errorf("mysql: prepare insert: %v", err)
 	}
-	r, err := execSQL(insert, b.Title, b.Author)
+	r, err := execSQL(insert, b.Title, b.Author, b.ImageURL)
 	if err != nil {
 		return -1, err
 	}
