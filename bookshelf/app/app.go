@@ -18,13 +18,25 @@ import (
 	"github.com/tony-yang/google-cloud-stack/bookshelf"
 )
 
+var (
+	UserProfile *Profile
+)
+
 // listHandler displays a list with summaries of books in the database.
 func listHandler(w http.ResponseWriter, r *http.Request) {
+	UserProfile = profileFromSession(r)
+
 	books, err := bookshelf.DB.ListBooks()
 	if err != nil {
 		fmt.Fprintf(w, err.Error())
 	} else {
-		bookResult := ""
+		bookResult := "<div><a href='login?redirect=books'>Login</a></div><div><a href='logout?redirect=books'>Logout</a></div>"
+
+		if UserProfile != nil {
+			fmt.Println("User profile has something =", UserProfile)
+			bookResult += fmt.Sprintf("name = %s", UserProfile.DisplayName)
+		}
+
 		for _, book := range books {
 			deleteForm := fmt.Sprintf("<form method='post' action='/books/%d/delete'><input type='submit' value='Delete'></form>", book.ID)
 			bookResult = bookResult + "<br>" + book.String() + deleteForm
@@ -206,6 +218,11 @@ func registerHandlers() {
 	r.HandleFunc("/books", createHandler).Methods("POST")
 	r.HandleFunc("/books/{id:[0-9]+}", updateHandler).Methods("POST")
 	r.HandleFunc("/books/{id:[0-9]+}/delete", deleteHandler).Methods("POST")
+
+	// For OAuth2
+	r.HandleFunc("/login", loginHandler).Methods("GET")
+	r.HandleFunc("/logout", logoutHandler).Methods("GET")
+	r.HandleFunc("/oauth2callback", oauthCallbackHandler).Methods("GET")
 
 	http.Handle("/", r)
 }
