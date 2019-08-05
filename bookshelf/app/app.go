@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -11,6 +12,7 @@ import (
 	"path"
 	"strconv"
 
+	"cloud.google.com/go/pubsub"
 	"cloud.google.com/go/storage"
 
 	uuid "github.com/gofrs/uuid"
@@ -139,6 +141,7 @@ func createHandler(w http.ResponseWriter, r *http.Request) {
 		fmt.Printf("createHandler failed to add book: %v\n", err)
 		http.Redirect(w, r, fmt.Sprintf("/books"), http.StatusFound)
 	}
+	go publishUpdate(id)
 	http.Redirect(w, r, fmt.Sprintf("/books/%d", id), http.StatusFound)
 }
 
@@ -153,7 +156,7 @@ func editHandler(w http.ResponseWriter, r *http.Request) {
 		http.Redirect(w, r, fmt.Sprintf("/books"), http.StatusFound)
 	}
 
-	FORM := fmt.Sprintf(`<form method="post" enctype="multipart/form-data" action="/books/%d">
+	FORM := fmt.Sprintf(`<form method="post" enctype="multipart/form-data" action="/books/%d">	
 		<div class="form-group">
 			<label for="id">ID</label>
 			<input class="form-control" name="id" id="id" value="%d">
@@ -192,6 +195,7 @@ func updateHandler(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		http.Redirect(w, r, fmt.Sprintf("/books"), http.StatusFound)
 	}
+	go publishUpdate(id)
 	http.Redirect(w, r, fmt.Sprintf("/books/%d", id), http.StatusFound)
 }
 
@@ -204,6 +208,20 @@ func deleteHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	bookshelf.DB.DeleteBook(id)
 	http.Redirect(w, r, fmt.Sprintf("/books"), http.StatusFound)
+}
+
+func publishUpdate(bookID int64) {
+	if bookshelf.PubsubClient == nil {
+		return
+	}
+	ctx := context.Background()
+	b, err := json.Marshal(bookID)
+	if err != nil {
+		return
+	}
+	topic := bookshelf.PubsubClient.Topic(bookshelf.PubsubTopicID)
+	_, err = topic.Publish(ctx, &pubsub.Message{Data: b}).Get(ctx)
+	log.Printf("Published update to Pub/Sub for Book ID %d: %v", bookID, err)
 }
 
 func registerHandlers() {

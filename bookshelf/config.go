@@ -5,6 +5,7 @@ import (
 	"log"
 	"os"
 
+	"cloud.google.com/go/pubsub"
 	"cloud.google.com/go/storage"
 
 	"github.com/gorilla/sessions"
@@ -16,19 +17,22 @@ import (
 var (
 	DB                BookDatabase
 	OAuthConfig       *oauth2.Config
+	PubsubClient      *pubsub.Client
 	SessionStore      sessions.Store
 	StorageBucket     *storage.BucketHandle
 	StorageBucketName string
 )
 
 const (
+	ProjectID         string = "PROJECT"
 	SQLPassword       string = "CHANGE ME"
-	SQLInstance       string = "PROJECT:REGION:INSTANCE NAME"
-	OAuthClientID     string = "OAuth ID"
-	OAuthClientSecret string = "OAuth Secret"
-	GCSBucketName     string = "Bucket Name"
+	SQLInstance       string = "PROJECT:REGION:NAME"
+	OAuthClientID     string = "OAUTH"
+	OAuthClientSecret string = "SECRET"
+	GCSBucketName     string = "BUCKET"
 	CookieSecret      string = "something-secret"
-	oauthRedirectURL  string = "OAuth Redirect URL"
+	oauthRedirectURL  string = "http://HOSTNAME/oauth2callback"
+	PubsubTopicID     string = "fill-book-details"
 )
 
 type cloudSQLConfig struct {
@@ -61,6 +65,11 @@ func init() {
 		HttpOnly: true,
 	}
 	SessionStore = cookieStore
+
+	PubsubClient, err = configurePubsub(ProjectID)
+	if err != nil {
+		log.Fatal(err)
+	}
 }
 
 func configureCloudSQL(c cloudSQLConfig) (BookDatabase, error) {
@@ -103,4 +112,22 @@ func configureOAuthClient(clientID, clientSecret string) *oauth2.Config {
 		Scopes:       []string{"email", "profile"},
 		Endpoint:     google.Endpoint,
 	}
+}
+
+func configurePubsub(projectID string) (*pubsub.Client, error) {
+	ctx := context.Background()
+	client, err := pubsub.NewClient(ctx, projectID)
+	if err != nil {
+		return nil, err
+	}
+
+	// Create the topic if it doesn't exist.
+	if exists, err := client.Topic(PubsubTopicID).Exists(ctx); err != nil {
+		return nil, err
+	} else if !exists {
+		if _, err := client.CreateTopic(ctx, PubsubTopicID); err != nil {
+			return nil, err
+		}
+	}
+	return client, nil
 }
