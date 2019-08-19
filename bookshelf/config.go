@@ -24,14 +24,14 @@ var (
 )
 
 const (
-	ProjectID         string = "PROJECT"
-	SQLPassword       string = "CHANGE ME"
-	SQLInstance       string = "PROJECT:REGION:NAME"
-	OAuthClientID     string = "OAUTH"
-	OAuthClientSecret string = "SECRET"
-	GCSBucketName     string = "BUCKET"
+	ProjectID         string = "ttyang-gcs"
+	SQLPassword       string = os.Getenv("DB_PASSWORD")
+	SQLInstance       string = "ttyang-gcs:us-west1:library"
+	OAuthClientID     string = os.Getenv("OAUTH")
+	OAuthClientSecret string = os.Getenv("SECRET")
+	GCSBucketName     string = "ttyang-gcs-library"
 	CookieSecret      string = "something-secret"
-	oauthRedirectURL  string = "http://HOSTNAME/oauth2callback"
+	oauthRedirectURL  string = "http://" + os.Getenv("REDIRECT") + "/oauth2callback"
 	PubsubTopicID     string = "fill-book-details"
 )
 
