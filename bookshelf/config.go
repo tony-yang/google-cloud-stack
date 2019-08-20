@@ -23,7 +23,7 @@ var (
 	StorageBucketName string
 )
 
-const (
+var (
 	ProjectID         string = "ttyang-gcs"
 	SQLPassword       string = os.Getenv("DB_PASSWORD")
 	SQLInstance       string = "ttyang-gcs:us-west1:library"
