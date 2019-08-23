@@ -24,12 +24,12 @@ var (
 )
 
 var (
-	ProjectID         string = "ttyang-gcs"
+	ProjectID         string = "rw-bookshelf"
 	SQLPassword       string = os.Getenv("DB_PASSWORD")
-	SQLInstance       string = "ttyang-gcs:us-west1:library"
+	SQLInstance       string = "rw-bookshelf:us-west1:library"
 	OAuthClientID     string = os.Getenv("OAUTH")
 	OAuthClientSecret string = os.Getenv("SECRET")
-	GCSBucketName     string = "ttyang-gcs-library"
+	GCSBucketName     string = "rw-bookshelf-library"
 	CookieSecret      string = "something-secret"
 	oauthRedirectURL  string = "http://" + os.Getenv("REDIRECT") + "/oauth2callback"
 	PubsubTopicID     string = "fill-book-details"
