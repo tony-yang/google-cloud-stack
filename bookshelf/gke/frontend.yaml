@@ -1,0 +1,62 @@
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  name: bookshelf-frontend
+  labels:
+    app: bookshelf
+    tier: frontend
+spec:
+  replicas: 3
+  template:
+    metadata:
+      labels:
+        app: bookshelf
+        tier: frontend
+    spec:
+      containers:
+        - name: bookshelf-app
+          image: gcr.io/rw-bookshelf/bookshelf:latest
+          command: ["app"]
+          imagePullPolicy: Always
+          ports:
+            - name: http-server
+              containerPort: 80
+          env:
+            - name: DB_USER
+              valueFrom:
+                secretKeyRef:
+                  name: cloudsql-db-credentials
+                  key: username
+            - name: DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: cloudsql-db-credentials
+                  key: password
+            - name: OAUTH
+              valueFrom:
+                secretKeyRef:
+                  name: bookshelf-secrets
+                  key: oauth
+            - name: SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: bookshelf-secrets
+                  key: secret
+            - name: REDIRECT
+              value: ttyang-gcs.appsport.com
+        - name: cloudsql-proxy
+          image: gcr.io/cloudsql-docker/gce-proxy:1.14
+          command: ["/cloud_sql_proxy",
+                    "-instances=rw-bookshelf:us-west1:library=tcp:3306",
+                    "-credential_file=/secrets/cloudsql/rw-bookshelf.json"]
+          securityContext:
+            runAsUser: 2 # non-root user
+            allowPrivilegeEscalation: false
+          volumeMounts:
+            - name: cloudsql-instance-credentials
+              mountPath: /secrets/cloudsql
+              readOnly: true
+      volumes:
+        - name: cloudsql-instance-credentials
+          secret:
+            secretName: cloudsql-instance-credentials
