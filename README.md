@@ -13,7 +13,11 @@ The project will be wrapped inside a Docker container for isolation purpose.
 
 ## Dev Guide
 To build a new Docker container with everything set up, run `make`.
-Run a container, and play with the various tools.
+
+Run a container, and play with the various tools. When starting the container, use the following command to mount the Docker socket into the container so that we can use the docker command inside the container for building images.
+```
+docker run -itd --rm -v [Path to]/google-cloud-stack:/go/src/[GitHub Path to]/google-cloud-stack -v /var/run/docker.sock:/var/run/docker.sock -p [Local Port]:80 google-cloud bash
+```
 
 Local development uses the cloud_sql_proxy for testing. GAE by default has configuration to access the Cloud SQL through its app.yaml with the `beta_settings`.
 
